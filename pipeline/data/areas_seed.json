@@ -1,0 +1,46 @@
+[
+  {"slug": "motijheel", "name_en": "Motijheel", "name_bn": "মতিঝিল", "zone": "Business district", "aliases": ["Motijheel", "Motijheel C/A"], "fallback": [90.4185, 23.7310], "featured": true},
+  {"slug": "dilkusha", "name_en": "Dilkusha", "name_bn": "দিলকুশা", "zone": "Business district", "aliases": ["Dilkusha", "Dilkusha C/A"], "fallback": [90.4195, 23.7255], "featured": true},
+  {"slug": "paltan", "name_en": "Paltan", "name_bn": "পল্টন", "zone": "Business district", "aliases": ["Paltan", "Purana Paltan", "Naya Paltan"], "fallback": [90.4120, 23.7340], "featured": true},
+  {"slug": "gulistan", "name_en": "Gulistan", "name_bn": "গুলিস্তান", "zone": "Business district", "aliases": ["Gulistan"], "fallback": [90.4110, 23.7240], "featured": true},
+  {"slug": "kakrail", "name_en": "Kakrail", "name_bn": "কাকরাইল", "zone": "Business district", "aliases": ["Kakrail"], "fallback": [90.4070, 23.7385], "featured": true},
+
+  {"slug": "shahbag", "name_en": "Shahbag", "name_bn": "শাহবাগ", "zone": "Central", "aliases": ["Shahbag", "Shahbagh"], "fallback": [90.3955, 23.7385], "featured": true},
+  {"slug": "ramna", "name_en": "Ramna", "name_bn": "রমনা", "zone": "Central", "aliases": ["Ramna"], "fallback": [90.4010, 23.7400], "featured": true},
+  {"slug": "segunbagicha", "name_en": "Segunbagicha", "name_bn": "সেগুনবাগিচা", "zone": "Central", "aliases": ["Segunbagicha", "Segun Bagicha", "Segunbagica"], "fallback": [90.4060, 23.7340], "featured": true},
+  {"slug": "shantinagar", "name_en": "Shantinagar", "name_bn": "শান্তিনগর", "zone": "Central", "aliases": ["Shantinagar", "Shanti Nagar"], "fallback": [90.4140, 23.7410], "featured": true},
+  {"slug": "malibagh", "name_en": "Malibagh", "name_bn": "মালিবাগ", "zone": "Central", "aliases": ["Malibagh", "Malibag"], "fallback": [90.4140, 23.7480], "featured": true},
+  {"slug": "moghbazar", "name_en": "Moghbazar", "name_bn": "মগবাজার", "zone": "Central", "aliases": ["Moghbazar", "Mogbazar", "Maghbazar", "Mog Bazar"], "fallback": [90.4040, 23.7490], "featured": true},
+  {"slug": "eskaton", "name_en": "Eskaton", "name_bn": "ইস্কাটন", "zone": "Central", "aliases": ["Eskaton", "Eskaton Garden", "New Eskaton"], "fallback": [90.3970, 23.7470], "featured": true},
+
+  {"slug": "kawran-bazar", "name_en": "Kawran Bazar", "name_bn": "কারওয়ান বাজার", "zone": "Midtown", "aliases": ["Kawran Bazar", "Karwan Bazar", "Kawran Bazaar", "Karwan Bazaar"], "fallback": [90.3930, 23.7510], "featured": true},
+  {"slug": "farmgate", "name_en": "Farmgate", "name_bn": "ফার্মগেট", "zone": "Midtown", "aliases": ["Farmgate", "Farm Gate"], "fallback": [90.3890, 23.7580], "featured": true},
+  {"slug": "tejgaon", "name_en": "Tejgaon", "name_bn": "তেজগাঁও", "zone": "Midtown", "aliases": ["Tejgaon", "Tejgaon Industrial Area"], "fallback": [90.4000, 23.7640], "featured": true},
+  {"slug": "panthapath", "name_en": "Panthapath", "name_bn": "পান্থপথ", "zone": "Midtown", "aliases": ["Panthapath", "Panthapath"], "fallback": [90.3850, 23.7520], "featured": true},
+  {"slug": "dhanmondi", "name_en": "Dhanmondi", "name_bn": "ধানমন্ডি", "zone": "Midtown", "aliases": ["Dhanmondi", "Dhanmondi R/A"], "fallback": [90.3760, 23.7465], "featured": true},
+
+  {"slug": "gulshan-1", "name_en": "Gulshan 1", "name_bn": "গুলশান ১", "zone": "North-east", "aliases": ["Gulshan 1", "Gulshan-1", "Gulshan"], "fallback": [90.4160, 23.7800], "featured": true},
+  {"slug": "gulshan-2", "name_en": "Gulshan 2", "name_bn": "গুলশান ২", "zone": "North-east", "aliases": ["Gulshan 2", "Gulshan-2"], "fallback": [90.4140, 23.7950], "featured": true},
+  {"slug": "banani", "name_en": "Banani", "name_bn": "বনানী", "zone": "North-east", "aliases": ["Banani"], "fallback": [90.4040, 23.7940], "featured": true},
+  {"slug": "baridhara", "name_en": "Baridhara", "name_bn": "বারিধারা", "zone": "North-east", "aliases": ["Baridhara", "Baridhara Diplomatic Zone"], "fallback": [90.4210, 23.8020], "featured": true},
+  {"slug": "niketan", "name_en": "Niketan", "name_bn": "নিকেতন", "zone": "North-east", "aliases": ["Niketan"], "fallback": [90.4100, 23.7760], "featured": true},
+  {"slug": "mohakhali", "name_en": "Mohakhali", "name_bn": "মহাখালী", "zone": "North-east", "aliases": ["Mohakhali"], "fallback": [90.4000, 23.7780], "featured": true},
+  {"slug": "badda", "name_en": "Badda", "name_bn": "বাড্ডা", "zone": "North-east", "aliases": ["Badda", "Middle Badda", "Uttar Badda"], "fallback": [90.4260, 23.7800], "featured": true},
+  {"slug": "rampura", "name_en": "Rampura", "name_bn": "রামপুরা", "zone": "North-east", "aliases": ["Rampura"], "fallback": [90.4210, 23.7610], "featured": true},
+
+  {"slug": "sadarghat", "name_en": "Sadarghat", "name_bn": "সদরঘাট", "zone": "Old Dhaka", "aliases": ["Sadarghat", "Sadar Ghat"], "fallback": [90.4100, 23.7065], "featured": true},
+  {"slug": "lalbagh", "name_en": "Lalbagh", "name_bn": "লালবাগ", "zone": "Old Dhaka", "aliases": ["Lalbagh", "Lalbag"], "fallback": [90.3880, 23.7190], "featured": true},
+  {"slug": "chawkbazar", "name_en": "Chawkbazar", "name_bn": "চকবাজার", "zone": "Old Dhaka", "aliases": ["Chawkbazar", "Chowk Bazar", "Chowkbazar", "Chawk Bazar"], "fallback": [90.3960, 23.7170], "featured": true},
+  {"slug": "armanitola", "name_en": "Armanitola", "name_bn": "আরমানিটোলা", "zone": "Old Dhaka", "aliases": ["Armanitola"], "fallback": [90.4020, 23.7130], "featured": true},
+
+  {"slug": "mirpur", "name_en": "Mirpur", "name_bn": "মিরপুর", "zone": "Beyond the core", "aliases": ["Mirpur 10", "Mirpur-10", "Mirpur"], "fallback": [90.3680, 23.8070], "featured": true},
+  {"slug": "bashundhara", "name_en": "Bashundhara", "name_bn": "বসুন্ধরা", "zone": "Beyond the core", "aliases": ["Bashundhara", "Bashundhara R/A", "Bashundhara Residential Area"], "fallback": [90.4300, 23.8150], "featured": true},
+
+  {"slug": "mohammadpur", "name_en": "Mohammadpur", "name_bn": "মোহাম্মদপুর", "zone": "Beyond the core", "aliases": ["Mohammadpur"], "fallback": [90.3600, 23.7590], "featured": false},
+  {"slug": "azimpur", "name_en": "Azimpur", "name_bn": "আজিমপুর", "zone": "Beyond the core", "aliases": ["Azimpur"], "fallback": [90.3860, 23.7270], "featured": false},
+  {"slug": "wari", "name_en": "Wari", "name_bn": "ওয়ারী", "zone": "Beyond the core", "aliases": ["Wari"], "fallback": [90.4180, 23.7170], "featured": false},
+  {"slug": "khilgaon", "name_en": "Khilgaon", "name_bn": "খিলগাঁও", "zone": "Beyond the core", "aliases": ["Khilgaon"], "fallback": [90.4300, 23.7500], "featured": false},
+  {"slug": "agargaon", "name_en": "Agargaon", "name_bn": "আগারগাঁও", "zone": "Beyond the core", "aliases": ["Agargaon"], "fallback": [90.3780, 23.7780], "featured": false},
+  {"slug": "kafrul", "name_en": "Kafrul", "name_bn": "কাফরুল", "zone": "Beyond the core", "aliases": ["Kafrul"], "fallback": [90.3850, 23.7900], "featured": false},
+  {"slug": "shyamoli", "name_en": "Shyamoli", "name_bn": "শ্যামলী", "zone": "Beyond the core", "aliases": ["Shyamoli"], "fallback": [90.3650, 23.7720], "featured": false}
+]

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+pipeline/raw/
+pipeline/out/
+*.pmtiles
+!web/public/data/.gitkeep
+*.tsbuildinfo

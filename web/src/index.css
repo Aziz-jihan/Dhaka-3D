@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-bengali: "Noto Sans Bengali", "Inter", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #ecd6b6;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+[lang="bn"] {
+  font-family: var(--font-bengali);
+}
+
+/* Frosted warm glass used by every floating panel */
+.panel {
+  background: rgb(255 248 238 / 0.82);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.6) inset,
+    0 10px 30px -10px rgb(90 50 20 / 0.35),
+    0 0 0 1px rgb(120 70 30 / 0.08);
+}
+
+/* ---- Golden hour atmosphere ------------------------------------------- */
+.atmosphere {
+  transition: opacity 1.2s ease;
+  opacity: 0;
+}
+.mode-golden .atmosphere {
+  opacity: 1;
+  background:
+    /* low sun glow above the skyline */
+    radial-gradient(ellipse 70% 55% at 62% 0%, rgb(255 196 120 / 0.55), transparent 70%),
+    /* amber haze along the horizon */
+    linear-gradient(to bottom, rgb(255 170 90 / 0.18), transparent 35%),
+    /* soft vignette to pull the eye to the centre */
+    radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgb(110 50 20 / 0.28) 100%);
+  mix-blend-mode: soft-light;
+}
+.mode-night .atmosphere {
+  opacity: 1;
+  background: radial-gradient(ellipse 120% 90% at 50% 45%, transparent 50%, rgb(5 8 20 / 0.55) 100%);
+}
+
+.loading {
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 10%, #ffd59a, transparent 70%),
+    linear-gradient(to bottom, #f2b06b, #ecd6b6 70%);
+}
+
+/* ---- Markers ----------------------------------------------------------- */
+.area-label {
+  font: 600 12px/1 var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5b3415;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgb(255 244 228 / 0.72);
+  box-shadow: 0 2px 8px -2px rgb(90 45 15 / 0.35);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+.area-label:lang(bn) {
+  font-family: var(--font-bengali);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.area-label:hover {
+  background: #fff6e8;
+}
+.area-label--minor {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.area-label.is-selected {
+  background: #b45309;
+  color: #fff7ed;
+  transform: scale(1.08);
+}
+.mode-night .area-label:not(.is-selected) {
+  background: rgb(30 36 54 / 0.75);
+  color: #f3d9b1;
+}
+
+.landmark-pin {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.landmark-pin__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 3px solid #c2410c;
+  box-shadow: 0 0 0 4px rgb(255 170 90 / 0.35), 0 2px 6px rgb(80 30 10 / 0.4);
+  transition: transform 0.2s;
+}
+.landmark-pin__name {
+  font: 500 11px/1.2 var(--font-sans);
+  color: #431407;
+  background: rgb(255 248 238 / 0.9);
+  padding: 3px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px -2px rgb(80 30 10 / 0.35);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.landmark-pin:lang(bn) .landmark-pin__name {
+  font-family: var(--font-bengali);
+  font-size: 12px;
+}
+.landmark-pin:hover .landmark-pin__name,
+.landmark-pin:focus-visible .landmark-pin__name,
+.landmark-pin.is-selected .landmark-pin__name {
+  opacity: 1;
+  transform: none;
+}
+.landmark-pin:hover .landmark-pin__dot,
+.landmark-pin.is-selected .landmark-pin__dot {
+  transform: scale(1.25);
+}
+
+/* MapLibre controls in the warm theme */
+.maplibregl-ctrl-group {
+  background: rgb(255 248 238 / 0.9) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px -10px rgb(90 50 20 / 0.35) !important;
+}
+.maplibregl-ctrl-attrib {
+  background: rgb(255 248 238 / 0.75) !important;
+}
+@media (max-width: 767px) {
+  .maplibregl-ctrl-scale {
+    display: none;
+  }
+}

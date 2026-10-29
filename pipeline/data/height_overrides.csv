@@ -1,0 +1,4 @@
+# Hand-checked building heights that win over every other source.
+# osm_id is "w<way id>" or "r<relation id>" as written by 02_extract_osm.py;
+# find it by clicking a building on openstreetmap.org. Add one row per building.
+osm_id,height_m,note

@@ -26,6 +26,20 @@ export interface Palette {
   labelHalo: string
   light: LightSpecification
   sky: SkySpecification
+  /** Lighting for the realistic three.js buildings */
+  buildings3d: {
+    /** degrees clockwise from north, and above the horizon */
+    sun: { azimuth: number; altitude: number; color: string; intensity: number }
+    ambient: { sky: string; ground: string; intensity: number }
+    /** darkness of building shadows on the streets, 0-1 */
+    shadow: number
+    /** share of lit windows, 0 by day, 1 at night */
+    night: number
+    /** what glass reflects, and the haze far buildings fade into */
+    reflection: string
+    haze: string
+    hazeMax: number
+  }
 }
 
 /**
@@ -69,6 +83,16 @@ const golden: Palette = {
     'sky-horizon-blend': 0.75,
     'atmosphere-blend': 0,
   },
+  // Low sun from the west-south-west: long shadows, warm light raking the facades
+  buildings3d: {
+    sun: { azimuth: 255, altitude: 11, color: '#ffb46b', intensity: 3.4 },
+    ambient: { sky: '#ffd8a8', ground: '#6b4a35', intensity: 1.0 },
+    shadow: 0.42,
+    night: 0,
+    reflection: '#ffe2b3',
+    haze: '#f4c896',
+    hazeMax: 0.8,
+  },
 }
 
 const day: Palette = {
@@ -108,6 +132,15 @@ const day: Palette = {
     'sky-horizon-blend': 0.6,
     'atmosphere-blend': 0,
   },
+  buildings3d: {
+    sun: { azimuth: 200, altitude: 58, color: '#fff6e8', intensity: 3.0 },
+    ambient: { sky: '#cfe3f7', ground: '#8a8577', intensity: 1.3 },
+    shadow: 0.32,
+    night: 0,
+    reflection: '#9fc4e8',
+    haze: '#e6eef4',
+    hazeMax: 0.6,
+  },
 }
 
 const night: Palette = {
@@ -146,6 +179,16 @@ const night: Palette = {
     'horizon-fog-blend': 0.6,
     'sky-horizon-blend': 0.6,
     'atmosphere-blend': 0,
+  },
+  // Moonlight plus lit windows
+  buildings3d: {
+    sun: { azimuth: 120, altitude: 35, color: '#9fb3ff', intensity: 0.45 },
+    ambient: { sky: '#2a3150', ground: '#141824', intensity: 0.6 },
+    shadow: 0.25,
+    night: 1,
+    reflection: '#27304f',
+    haze: '#1d2236',
+    hazeMax: 0.8,
   },
 }
 

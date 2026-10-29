@@ -24,6 +24,8 @@ export default function MapControls() {
   const setLang = useApp((s) => s.setLang)
   const layers = useApp((s) => s.layers)
   const toggleLayer = useApp((s) => s.toggleLayer)
+  const quality = useApp((s) => s.buildingQuality)
+  const setQuality = useApp((s) => s.setBuildingQuality)
   const [layersOpen, setLayersOpen] = useState(false)
   const [orbit, setOrbit] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -98,7 +100,26 @@ export default function MapControls() {
             Layers
           </button>
           {layersOpen && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-48 rounded-xl bg-[#fff8ee] p-2 shadow-xl ring-1 ring-amber-900/10">
+            <div className="absolute right-0 top-full z-20 mt-2 w-52 rounded-xl bg-[#fff8ee] p-2 shadow-xl ring-1 ring-amber-900/10">
+              <p className="px-2 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-900/55">
+                Buildings
+              </p>
+              <div role="radiogroup" aria-label="Building detail" className="mb-2 flex rounded-lg bg-amber-900/5 p-0.5">
+                {(['realistic', 'simple'] as const).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    role="radio"
+                    aria-checked={quality === q}
+                    onClick={() => setQuality(q)}
+                    className={`flex-1 rounded-md px-2 py-1 text-xs font-medium capitalize transition ${
+                      quality === q ? 'bg-amber-700 text-amber-50 shadow-sm' : 'text-stone-700 hover:bg-amber-900/5'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
               {(Object.keys(LAYER_LABELS) as LayerKey[]).map((k) => (
                 <label
                   key={k}

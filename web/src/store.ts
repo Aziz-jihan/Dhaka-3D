@@ -5,6 +5,7 @@ import type { CityData, Selection } from './types'
 
 export type Lang = 'en' | 'bn'
 export type LayerKey = 'buildings' | 'areas' | 'roads' | 'metro' | 'landmarks'
+export type BuildingQuality = 'realistic' | 'simple'
 
 interface AppState {
   map: MlMap | null
@@ -14,6 +15,7 @@ interface AppState {
   lang: Lang
   selection: Selection | null
   layers: Record<LayerKey, boolean>
+  buildingQuality: BuildingQuality
   panelOpen: boolean
   setMap: (map: MlMap | null) => void
   setData: (data: CityData) => void
@@ -22,6 +24,7 @@ interface AppState {
   setLang: (lang: Lang) => void
   select: (selection: Selection | null) => void
   toggleLayer: (key: LayerKey) => void
+  setBuildingQuality: (quality: BuildingQuality) => void
   setPanelOpen: (open: boolean) => void
 }
 
@@ -33,6 +36,7 @@ export const useApp = create<AppState>((set) => ({
   lang: 'en',
   selection: null,
   layers: { buildings: true, areas: true, roads: true, metro: true, landmarks: true },
+  buildingQuality: 'realistic',
   panelOpen: true,
   setMap: (map) => set({ map }),
   setData: (data) => set({ data }),
@@ -41,5 +45,6 @@ export const useApp = create<AppState>((set) => ({
   setLang: (lang) => set({ lang }),
   select: (selection) => set({ selection }),
   toggleLayer: (key) => set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
+  setBuildingQuality: (buildingQuality) => set({ buildingQuality }),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
 }))

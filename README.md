@@ -38,7 +38,8 @@ In production, upload `dhaka.pmtiles` to any host that supports HTTP range reque
 
 | Piece | Where |
 |---|---|
-| 3D buildings | Own tileset `dhaka.pmtiles` (pipeline steps 01–03, 06): OSM footprints + Microsoft ML footprints OSM is missing; heights from OSM `height` / `building:levels`, else the GHSL average building height of the ~90 m block |
+| 3D buildings | Own tileset `dhaka.pmtiles` (pipeline steps 01–03, 06), each building whole in the one tile holding its inside point: OSM footprints + Microsoft ML footprints OSM is missing; heights from OSM `height` / `building:levels`, else the GHSL average building height of the ~90 m block |
+| Realistic building rendering | `web/src/buildings/`: a three.js layer inside MapLibre. A web worker turns each tile into one mesh (walls, roofs, parapets, rooftop stair rooms and water tanks); a shader draws windows per floor, Dhaka paint colours, glass towers and lit windows at night; the sun casts shadows on buildings and streets. Switch to **Simple** in the Layers menu for plain extrusions |
 | Roads, water, parks | OpenFreeMap vector tiles (OpenStreetMap data, OpenMapTiles schema) |
 | Golden hour / day / night lighting | `web/src/map/lighting.ts`: sun position and colour, sky, horizon haze, palette |
 | Map style | `web/src/map/style.ts` |
@@ -86,13 +87,16 @@ Shareable links: the camera is kept in the URL hash (`#map=zoom/lat/lng/bearing/
 - [x] Loading screen and attribution
 
 ### Phase 4: Landmarks and visuals
-- [ ] glTF landmark models (deck.gl `ScenegraphLayer`)
+- [x] Realistic buildings (three.js): windows per floor, sun shades, shop shutters, Dhaka paint palette and Old Dhaka brick, glass towers over 45 m, parapets, stair rooms and water tanks on roofs, sun shadows on buildings and streets, distance haze
+- [x] Night window glow (warm bulbs and cool tube lights, lit offices in towers)
+- [x] Realistic / Simple switch; phones get a smaller shadow map and bigger tiles
+- [ ] Frame rate not yet measured on real hardware: the Claude browser pane throttles WebGL (the bare map runs at ~3 fps there), so check in a normal browser and tune `CACHE_TILES`, tile size and shadow size in `BuildingLayer.ts` if needed
+- [ ] glTF landmark models
 - [ ] Animated metro train
 - [ ] Guided tours
-- [ ] Night window glow
 
 ### Phase 5: Performance, QA and deploy
-- [x] Production build; MapLibre split into its own cached chunk
+- [x] Production build; MapLibre and three.js split into their own cached chunks
 - [ ] Playwright smoke tests
 - [ ] Lighthouse pass and cross-browser checks (Safari iOS, Android)
 - [ ] Deploy to Cloudflare Pages + `dhaka.pmtiles` on R2 (set `VITE_BUILDINGS_URL`)

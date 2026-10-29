@@ -3,8 +3,10 @@
 A pure-Python stand-in for tippecanoe (which has no Windows build): for the
 city-sized extent here it finishes in minutes and needs no WSL or Docker.
 
-Per zoom level small buildings are dropped and outlines simplified, so the
-low-zoom tiles that cover many square kilometres stay light.
+Each building goes whole (unclipped) into the one tile that holds its
+point_on_surface, so 3D meshes get no cut walls and no duplicates across tile
+edges. Per zoom level small buildings are dropped and outlines simplified, so
+the low-zoom tiles that cover many square kilometres stay light.
 
 Output: web/public/data/dhaka.pmtiles (layer "buildings": h, b, src, name)
 """
@@ -27,7 +29,6 @@ from common import M_PER_DEG_LAT, M_PER_DEG_LON, OUT, TILE_BBOX, WEB_DATA
 
 MIN_ZOOM, MAX_ZOOM = 13, 16
 EXTENT = 4096
-BUFFER_PX = 16
 LAYER = "buildings"
 # (min footprint m², or at least this tall) to appear at a zoom; z15+ keeps everything
 ZOOM_FILTER = {13: (120, 20), 14: (40, 12)}
@@ -77,16 +78,18 @@ def _init():
     with open(CACHE, "rb") as fh:
         d = pickle.load(fh)
     d["geom"] = shapely.from_wkb(d.pop("wkb"))
-    d["tree"] = shapely.STRtree(d["geom"])
+    d["anchor"] = shapely.get_coordinates(shapely.point_on_surface(d["geom"]))
+    d["tree"] = shapely.STRtree(shapely.points(d["anchor"]))
     _G.update(d)
 
 
 def build_tile(zxy):
     z, x, y = zxy
     scale = 2**z
-    pad = BUFFER_PX / EXTENT
-    box = ((x - pad) / scale, (y - pad) / scale, (x + 1 + pad) / scale, (y + 1 + pad) / scale)
-    idx = _G["tree"].query(shapely.box(*box))
+    idx = _G["tree"].query(shapely.box(x / scale, y / scale, (x + 1) / scale, (y + 1) / scale))
+    # Anchors on the shared edge belong to the tile to their right/below only
+    ax, ay = _G["anchor"][idx].T * scale
+    idx = idx[(ax >= x) & (ax < x + 1) & (ay >= y) & (ay < y + 1)]
     if z in ZOOM_FILTER:
         min_area, min_h = ZOOM_FILTER[z]
         idx = idx[(_G["area"][idx] >= min_area) | (_G["h"][idx] >= min_h)]
@@ -94,9 +97,8 @@ def build_tile(zxy):
         return None
     idx.sort()
 
-    geoms = shapely.clip_by_rect(_G["geom"][idx], *box)
-    # world units -> tile pixels (y already points down)
-    geoms = shapely.transform(geoms, lambda xy: (xy * scale - [x, y]) * EXTENT)
+    # world units -> tile pixels (y already points down); parts past the tile edge are kept
+    geoms = shapely.transform(_G["geom"][idx], lambda xy: (xy * scale - [x, y]) * EXTENT)
     if z < MAX_ZOOM:
         geoms = shapely.simplify(geoms, 0.5, preserve_topology=True)
     keep = ~shapely.is_empty(geoms) & (shapely.area(geoms) > 0.5)

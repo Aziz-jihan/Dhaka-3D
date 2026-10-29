@@ -5,10 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    // MapLibre is most of the bundle; keep it in its own long-cached chunk
+    // MapLibre and three.js are most of the bundle; keep them in their own long-cached chunks
     chunkSizeWarningLimit: 1100,
     rollupOptions: {
-      output: { manualChunks: { maplibre: ['maplibre-gl'] } },
+      output: { manualChunks: { maplibre: ['maplibre-gl'], three: ['three', 'three-mesh-bvh'] } },
     },
   },
 })

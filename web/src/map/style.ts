@@ -1,4 +1,5 @@
 import type {
+  AllPaintProperties,
   ExpressionSpecification,
   LayerSpecification,
   Map as MlMap,
@@ -10,7 +11,7 @@ import type { Palette } from './lighting'
 const OMT_TILEJSON = 'https://tiles.openfreemap.org/planet'
 const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
 /** Our own building tileset (pipeline/06_build_tiles.py); set VITE_BUILDINGS_URL to serve it from a CDN */
-const BUILDINGS_PMTILES = import.meta.env.VITE_BUILDINGS_URL ?? `${location.origin}/data/dhaka.pmtiles`
+export const BUILDINGS_PMTILES = import.meta.env.VITE_BUILDINGS_URL ?? `${location.origin}/data/dhaka.pmtiles`
 
 export const BUILDING_MIN_ZOOM = 13
 
@@ -63,7 +64,7 @@ export function palettePaint(p: Palette): Record<string, Record<string, unknown>
 export function applyPalette(map: MlMap, p: Palette) {
   for (const [layer, props] of Object.entries(palettePaint(p))) {
     if (!map.getLayer(layer)) continue
-    for (const [prop, value] of Object.entries(props)) map.setPaintProperty(layer, prop, value)
+    for (const [prop, value] of Object.entries(props)) map.setPaintProperty(layer, prop as keyof AllPaintProperties, value as AllPaintProperties[keyof AllPaintProperties])
   }
   map.setLight(p.light)
   map.setSky(p.sky)
@@ -218,9 +219,8 @@ export function buildStyle(p: Palette): StyleSpecification {
   }
 }
 
-/** Layer ids behind each user-facing layer toggle */
+/** Layer ids behind each user-facing layer toggle (buildings depend on the quality setting, see MapView) */
 export const TOGGLE_LAYERS = {
-  buildings: ['buildings'],
   areas: ['area-fill', 'area-line'],
   roads: ['road-casing', 'road-minor', 'road-secondary', 'road-primary', 'road-motorway', 'rail', 'road-label'],
   metro: ['metro', 'metro-glow'],

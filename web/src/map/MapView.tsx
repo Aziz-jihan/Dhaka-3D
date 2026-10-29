@@ -1,19 +1,31 @@
-import { useEffect, useRef } from 'react'
-import maplibregl, { type MapGeoJSONFeature } from 'maplibre-gl'
+import { useEffect, useRef, useState } from 'react'
+import * as maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { useApp } from '../store'
 import { areaAt } from '../lib/geo'
+import { BuildingLayer } from '../buildings/BuildingLayer'
+import type { BuildingProps } from '../buildings/tileWorker'
 import { DEFAULT_VIEW, DHAKA_BOUNDS, focusSelection } from './camera'
 import { PALETTES } from './lighting'
 import { CityMarkers } from './markers'
-import { TOGGLE_LAYERS, applyPalette, buildStyle } from './style'
+import { BUILDINGS_PMTILES, TOGGLE_LAYERS, applyPalette, buildStyle } from './style'
 
+// MapLibre 6 looks for its worker next to its own module, which bundling moves; point it at the emitted file
+maplibregl.setWorkerUrl(maplibreWorkerUrl)
 // Lets future self-hosted tiles use pmtiles:// URLs (see pipeline/README)
 maplibregl.addProtocol('pmtiles', new Protocol().tile)
 
 const INITIAL_HASH = location.hash
 const BUILDING_SOURCE = { source: 'buildings', sourceLayer: 'buildings' }
+const LOW_POWER = window.matchMedia('(pointer: coarse)').matches
+
+interface BuildingPick {
+  id: number
+  props: BuildingProps
+  lngLat: [number, number]
+}
 
 export default function MapView() {
   const container = useRef<HTMLDivElement>(null)
@@ -24,6 +36,11 @@ export default function MapView() {
   const lang = useApp((s) => s.lang)
   const layers = useApp((s) => s.layers)
   const selection = useApp((s) => s.selection)
+  const quality = useApp((s) => s.buildingQuality)
+  const buildings3d = useRef<BuildingLayer | null>(null)
+  // True once the style has loaded. Not map.isStyleLoaded(): that turns false again
+  // whenever tiles are loading, and the one-off 'load' event never fires twice.
+  const [loaded, setLoaded] = useState(false)
 
   // Create the map once
   useEffect(() => {
@@ -46,10 +63,15 @@ export default function MapView() {
     // Lift the loading screen once everything has drawn, or 3 s after the map loads
     // so a slow connection sees the city fill in rather than a waiting screen
     m.once('idle', () => setReady(true))
-    m.once('load', () => setTimeout(() => setReady(true), 3000))
+    m.once('load', () => {
+      setLoaded(true)
+      setTimeout(() => setReady(true), 3000)
+    })
     setMap(m)
     if (import.meta.env.DEV) Object.assign(window, { __map: m })
     return () => {
+      setLoaded(false)
+      buildings3d.current = null
       setMap(null)
       m.remove()
     }
@@ -62,39 +84,64 @@ export default function MapView() {
     markers.current = new CityMarkers(map, data, select)
     markers.current.setLang(useApp.getState().lang)
 
-    const onClick = (e: maplibregl.MapMouseEvent) => {
-      const hit = map.queryRenderedFeatures(e.point, { layers: ['buildings'] })[0] as MapGeoJSONFeature | undefined
-      if (hit && hit.id != null) {
-        const p = hit.properties
-        const lngLat: [number, number] = [e.lngLat.lng, e.lngLat.lat]
-        select({
-          type: 'building',
-          id: Number(hit.id),
-          lngLat,
-          height: Number(p.h),
-          base: Number(p.b),
-          src: Number(p.src),
-          name: p.name as string | undefined,
-          area: areaAt(lngLat, data.areas.features)?.properties.slug,
-        })
-        return
+    // Realistic buildings are ray-cast in three.js; simple ones are MapLibre features
+    const pickBuilding = (point: maplibregl.Point): BuildingPick | null => {
+      if (buildings3d.current) return buildings3d.current.pick(point)
+      const f = map.queryRenderedFeatures(point, { layers: ['buildings'] })[0]
+      if (!f || f.id == null) return null
+      const { lng, lat } = map.unproject(point)
+      const p = f.properties
+      return {
+        id: Number(f.id),
+        props: { h: Number(p.h), b: Number(p.b), src: Number(p.src), name: p.name as string | undefined },
+        lngLat: [lng, lat],
       }
-      select(null)
     }
 
-    let hovered: number | string | undefined
-    const setHover = (id: number | string | undefined) => {
+    const onClick = (e: maplibregl.MapMouseEvent) => {
+      const hit = pickBuilding(e.point)
+      if (!hit) {
+        select(null)
+        return
+      }
+      select({
+        type: 'building',
+        id: hit.id,
+        lngLat: hit.lngLat,
+        height: hit.props.h,
+        base: hit.props.b,
+        src: hit.props.src,
+        name: hit.props.name,
+        area: areaAt(hit.lngLat, data.areas.features)?.properties.slug,
+      })
+    }
+
+    let hovered: number | null = null
+    const setHover = (id: number | null) => {
       if (hovered === id) return
       if (hovered != null) map.setFeatureState({ ...BUILDING_SOURCE, id: hovered }, { hover: false })
       if (id != null) map.setFeatureState({ ...BUILDING_SOURCE, id }, { hover: true })
+      buildings3d.current?.setHover(id)
       hovered = id
       map.getCanvas().style.cursor = id != null ? 'pointer' : ''
     }
-    const onMove = (e: maplibregl.MapLayerMouseEvent) => setHover(e.features?.[0]?.id)
-    const onLeave = () => setHover(undefined)
+    // Ray-casting on every mousemove event is wasteful; once per frame is plenty
+    let pending: maplibregl.Point | null = null
+    const onMove = (e: maplibregl.MapMouseEvent) => {
+      if (!pending)
+        requestAnimationFrame(() => {
+          if (pending) setHover(pickBuilding(pending)?.id ?? null)
+          pending = null
+        })
+      pending = e.point
+    }
+    const onLeave = () => {
+      pending = null
+      setHover(null)
+    }
     map.on('click', onClick)
-    map.on('mousemove', 'buildings', onMove)
-    map.on('mouseleave', 'buildings', onLeave)
+    map.on('mousemove', onMove)
+    map.on('mouseout', onLeave)
 
     // Deep link: ?place=<slug>
     const slug = new URLSearchParams(location.search).get('place')
@@ -105,8 +152,8 @@ export default function MapView() {
 
     return () => {
       map.off('click', onClick)
-      map.off('mousemove', 'buildings', onMove)
-      map.off('mouseleave', 'buildings', onLeave)
+      map.off('mousemove', onMove)
+      map.off('mouseout', onLeave)
       markers.current?.remove()
       markers.current = null
     }
@@ -114,34 +161,53 @@ export default function MapView() {
 
   // Lighting
   useEffect(() => {
-    if (!map) return
-    const apply = () => applyPalette(map, PALETTES[lightMode])
-    if (map.isStyleLoaded()) apply()
-    else map.once('load', apply)
-  }, [map, lightMode])
+    if (!map?.style || !loaded) return
+    applyPalette(map, PALETTES[lightMode])
+    buildings3d.current?.setLighting(PALETTES[lightMode])
+  }, [map, loaded, lightMode])
+
+  // Realistic (three.js) or simple (MapLibre extrusion) buildings
+  useEffect(() => {
+    if (!map || !loaded) return
+    if (quality === 'realistic' && !buildings3d.current) {
+      const layer = new BuildingLayer({ url: BUILDINGS_PMTILES, lowPower: LOW_POWER })
+      const { lightMode, selection, layers } = useApp.getState()
+      layer.setLighting(PALETTES[lightMode])
+      layer.setSelected(selection?.type === 'building' ? selection.id : null)
+      map.addLayer(layer)
+      if (!layers.buildings) map.setLayoutProperty(layer.id, 'visibility', 'none')
+      buildings3d.current = layer
+    } else if (quality === 'simple' && buildings3d.current) {
+      map.removeLayer(buildings3d.current.id)
+      buildings3d.current = null
+    }
+    const showSimple = quality === 'simple' && useApp.getState().layers.buildings
+    map.setLayoutProperty('buildings', 'visibility', showSimple ? 'visible' : 'none')
+  }, [map, loaded, quality])
 
   useEffect(() => markers.current?.setLang(lang), [lang, data])
 
   // Layer toggles
   useEffect(() => {
-    if (!map) return
-    const apply = () => {
-      for (const [key, ids] of Object.entries(TOGGLE_LAYERS)) {
-        const visible = layers[key as keyof typeof TOGGLE_LAYERS] ? 'visible' : 'none'
-        for (const id of ids) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible)
-      }
-      markers.current?.setVisible('areas', layers.areas)
-      markers.current?.setVisible('landmarks', layers.landmarks)
+    if (!map || !loaded) return
+    for (const [key, ids] of Object.entries(TOGGLE_LAYERS)) {
+      const visible = layers[key as keyof typeof TOGGLE_LAYERS] ? 'visible' : 'none'
+      for (const id of ids) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible)
     }
-    if (map.isStyleLoaded()) apply()
-    else map.once('load', apply)
-  }, [map, layers, data])
+    const realistic = useApp.getState().buildingQuality === 'realistic'
+    const vis = (on: boolean) => (on ? 'visible' : 'none')
+    map.setLayoutProperty('buildings', 'visibility', vis(layers.buildings && !realistic))
+    if (map.getLayer('buildings-3d')) map.setLayoutProperty('buildings-3d', 'visibility', vis(layers.buildings && realistic))
+    markers.current?.setVisible('areas', layers.areas)
+    markers.current?.setVisible('landmarks', layers.landmarks)
+  }, [map, loaded, layers, data])
 
   // Selection: highlight, camera, URL
   const prevArea = useRef<string | null>(null)
   const prevBuilding = useRef<number | null>(null)
   useEffect(() => {
-    if (!map || !data) return
+    // A hot-reload can run this once against the map that was just removed (no style left)
+    if (!map?.style || !data) return
     markers.current?.setSelected(selection)
 
     const areaSlug = selection?.type === 'area' ? selection.slug : null
@@ -158,6 +224,7 @@ export default function MapView() {
       if (buildingId != null) map.setFeatureState({ ...BUILDING_SOURCE, id: buildingId }, { selected: true })
     }
     prevBuilding.current = buildingId
+    buildings3d.current?.setSelected(buildingId)
     if (selection) focusSelection(map, data, selection)
 
     const url = new URL(location.href)

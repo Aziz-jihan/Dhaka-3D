@@ -11,6 +11,7 @@ export default function Sidebar() {
   const select = useApp((s) => s.select)
   const open = useApp((s) => s.panelOpen)
   const setOpen = useApp((s) => s.setPanelOpen)
+  const touring = useApp((s) => s.tour !== null)
 
   const zones = useMemo(() => {
     const byZone = new Map<string, { slug: string; en: string; bn: string }[]>()
@@ -32,7 +33,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`panel fixed inset-x-2 bottom-9 z-10 flex max-h-[46vh] flex-col rounded-2xl transition-transform duration-300 md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:max-h-none md:w-[340px] ${
+      className={`panel fixed inset-x-2 bottom-9 z-10 ${touring ? 'hidden md:flex' : 'flex'} max-h-[46vh] flex-col rounded-2xl transition-transform duration-300 md:inset-x-auto md:bottom-4 md:left-4 md:top-4 md:max-h-none md:w-[340px] ${
         open ? 'translate-y-0' : 'translate-y-[calc(100%-4.25rem)] md:translate-y-0'
       }`}
     >

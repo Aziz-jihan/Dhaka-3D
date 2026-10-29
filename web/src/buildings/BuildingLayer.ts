@@ -1,15 +1,20 @@
 /**
  * Realistic buildings: a MapLibre custom layer that draws the building
  * tileset with three.js, sharing the map's WebGL context, depth buffer and
- * camera. Adds sun shadows (on buildings and streets) and a procedural facade.
+ * camera. Adds sun shadows (on buildings and streets), a procedural facade,
+ * glTF landmark models and the elevated Metro Line 6 with moving trains.
  */
 import * as THREE from 'three'
 import { MercatorCoordinate, type CustomLayerInterface, type CustomRenderMethodInput, type Map as MlMap } from 'maplibre-gl'
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { LANDMARK_MODELS } from '../landmarks/models'
 import type { Palette } from '../map/lighting'
+import type { CityData } from '../types'
 import type { MeshArrays } from './geometry'
 import { createFacadeMaterial, srgb, type FacadeUniforms } from './material'
-import type { BuildingProps, Origin, WorkerRequest, WorkerResponse } from './tileWorker'
+import { MetroLine } from './metro'
+import type { BuildingProps, ClearZone, Origin, WorkerRequest, WorkerResponse } from './tileWorker'
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree
@@ -24,6 +29,8 @@ const CLUTTER_MIN_ZOOM = 15
 const CACHE_TILES = 240
 const MAX_IN_FLIGHT = 12
 const SHADOW_HALF_M = 1300
+/** Trains animate every frame when this close; further out a few updates a second is plenty */
+const SMOOTH_TRAINS_ZOOM = 14.5
 
 type TileState = 'loading' | 'ready' | 'empty' | 'error'
 
@@ -38,16 +45,16 @@ interface Tile {
   lastUsed: number
 }
 
-export interface BuildingHit {
-  id: number
-  props: BuildingProps
-  lngLat: [number, number]
-}
+export type LayerHit =
+  | { kind: 'building'; id: number; props: BuildingProps; lngLat: [number, number] }
+  | { kind: 'landmark'; slug: string }
 
 export interface BuildingLayerOptions {
   url: string
   /** phones: bigger tiles and a smaller shadow map */
   lowPower: boolean
+  /** landmark positions and the metro line */
+  city: Pick<CityData, 'landmarks' | 'metro'>
 }
 
 const tileKey = (z: number, x: number, y: number) => `${z}/${x}/${y}`
@@ -82,6 +89,12 @@ export class BuildingLayer implements CustomLayerInterface {
   private inFlight = 0
   private frame = 0
   private readonly raycaster = new THREE.Raycaster()
+  private readonly landmarks = new THREE.Group()
+  private readonly clear: ClearZone[] = []
+  private readonly metro: MetroLine
+  private readonly frustum = new THREE.Frustum()
+  private readonly frustumMatrix = new THREE.Matrix4()
+  private trainTimer = 0
 
   constructor(private readonly options: BuildingLayerOptions) {
     const o = MercatorCoordinate.fromLngLat(ORIGIN_LNGLAT)
@@ -113,7 +126,46 @@ export class BuildingLayer implements CustomLayerInterface {
     this.ground.position.z = 0.05
 
     this.raycaster.firstHitOnly = true
-    this.scene.add(this.group, this.sun, this.sun.target, this.ambient, this.ground)
+    this.metro = new MetroLine(options.city.metro, (lng, lat) => this.toLocal(lng, lat))
+    this.placeLandmarks()
+    this.scene.add(this.group, this.landmarks, this.metro.group, this.sun, this.sun.target, this.ambient, this.ground)
+  }
+
+  /** lng/lat -> local metres */
+  private toLocal(lng: number, lat: number): [number, number] {
+    const m = MercatorCoordinate.fromLngLat([lng, lat])
+    return [(m.x - this.origin.x) / this.origin.scale, -(m.y - this.origin.y) / this.origin.scale]
+  }
+
+  /** Load each landmark's glTF model where the landmark stands, and clear the footprints under it */
+  private placeLandmarks() {
+    const loader = new GLTFLoader()
+    for (const model of LANDMARK_MODELS) {
+      const f = this.options.city.landmarks.features.find((l) => l.properties.slug === model.slug)
+      if (!f) continue
+      const [x, y] = this.toLocal(f.geometry.coordinates[0], f.geometry.coordinates[1])
+      this.clear.push({ x, y, r: model.clearRadius })
+      loader.load(`/models/${model.slug}.glb`, (gltf) => {
+        const holder = new THREE.Group()
+        // glTF is y-up with -z north; this scene is z-up with +y north
+        gltf.scene.rotation.x = Math.PI / 2
+        holder.add(gltf.scene)
+        holder.position.set(x, y, 0)
+        holder.rotation.z = -THREE.MathUtils.degToRad(model.bearing)
+        holder.traverse((o) => {
+          o.castShadow = true
+          o.receiveShadow = true
+          o.userData.landmark = model.slug
+        })
+        this.landmarks.add(holder)
+        this.map?.triggerRepaint()
+      })
+    }
+  }
+
+  setMetroVisible(visible: boolean) {
+    this.metro.group.visible = visible
+    this.map?.triggerRepaint()
   }
 
   onAdd(map: MlMap, gl: WebGLRenderingContext | WebGL2RenderingContext) {
@@ -128,13 +180,14 @@ export class BuildingLayer implements CustomLayerInterface {
     for (let i = 0; i < workers; i++) {
       const w = new Worker(new URL('./tileWorker.ts', import.meta.url), { type: 'module' })
       w.onmessage = (e: MessageEvent<WorkerResponse>) => this.onTile(e.data)
-      w.postMessage({ type: 'init', url: this.options.url, origin: this.origin } satisfies WorkerRequest)
+      w.postMessage({ type: 'init', url: this.options.url, origin: this.origin, clear: this.clear } satisfies WorkerRequest)
       this.workers.push(w)
     }
   }
 
   onRemove() {
     for (const w of this.workers) w.terminate()
+    clearTimeout(this.trainTimer)
     for (const t of this.tiles.values()) this.disposeTile(t)
     this.tiles.clear()
     this.material.dispose()
@@ -160,10 +213,31 @@ export class BuildingLayer implements CustomLayerInterface {
 
     this.updateTiles()
     this.followShadow()
+    const animating = this.animateTrains()
 
     this.renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
     this.renderer.resetState()
     this.renderer.render(this.scene, this.camera)
+
+    // Keep the trains moving: every frame up close, a few times a second from afar
+    if (animating && !this.trainTimer) {
+      if (this.map.getZoom() >= SMOOTH_TRAINS_ZOOM) this.map.triggerRepaint()
+      else
+        this.trainTimer = window.setTimeout(() => {
+          this.trainTimer = 0
+          this.map.triggerRepaint()
+        }, 250)
+    }
+  }
+
+  /** Move trains to their timetable position; true if the line could be on screen */
+  private animateTrains() {
+    if (!this.metro.group.visible) return false
+    this.frustumMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse)
+    this.frustum.setFromProjectionMatrix(this.frustumMatrix)
+    if (!this.metro.visibleIn(this.frustum)) return false
+    this.metro.update(performance.now() / 1000)
+    return true
   }
 
   setLighting(p: Palette) {
@@ -196,8 +270,8 @@ export class BuildingLayer implements CustomLayerInterface {
     this.map?.triggerRepaint()
   }
 
-  /** Building under a screen point (CSS pixels), using the last rendered frame */
-  pick(point: { x: number; y: number }): BuildingHit | null {
+  /** Building or landmark model under a screen point (CSS pixels), using the last rendered frame */
+  pick(point: { x: number; y: number }): LayerHit | null {
     const canvas = this.map.getCanvas()
     const inv = this.viewProj.clone().invert()
     const ndcX = (point.x / canvas.clientWidth) * 2 - 1
@@ -215,6 +289,8 @@ export class BuildingLayer implements CustomLayerInterface {
       }
     }
     const hit = this.raycaster.intersectObjects(meshes, false)[0]
+    const mark = this.raycaster.intersectObject(this.landmarks, true)[0]
+    if (mark && (!hit || mark.distance < hit.distance)) return { kind: 'landmark', slug: mark.object.userData.landmark }
     if (!hit?.face) return null
     const geom = (hit.object as THREE.Mesh).geometry
     const id = Math.round(geom.getAttribute('aBld').getX(hit.face.a))
@@ -222,7 +298,7 @@ export class BuildingLayer implements CustomLayerInterface {
     if (!props) return null
     const { x, y, scale } = this.origin
     const lngLat = new MercatorCoordinate(x + hit.point.x * scale, y - hit.point.y * scale).toLngLat()
-    return { id, props, lngLat: [lngLat.lng, lngLat.lat] }
+    return { kind: 'building', id, props, lngLat: [lngLat.lng, lngLat.lat] }
   }
 
   /** Choose the tiles for this view, request missing ones, show the best available */

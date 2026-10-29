@@ -16,6 +16,13 @@ export interface Origin {
   scale: number
 }
 
+/** Circle (local metres) where a landmark model stands; footprints centred inside are skipped */
+export interface ClearZone {
+  x: number
+  y: number
+  r: number
+}
+
 export interface BuildingProps {
   h: number
   b: number
@@ -24,7 +31,7 @@ export interface BuildingProps {
 }
 
 export type WorkerRequest =
-  | { type: 'init'; url: string; origin: Origin }
+  | { type: 'init'; url: string; origin: Origin; clear: ClearZone[] }
   | { type: 'tile'; key: string; z: number; x: number; y: number; clutter: boolean }
 
 export type WorkerResponse =
@@ -35,6 +42,7 @@ const LAYER = 'buildings'
 
 let archive: PMTiles
 let origin: Origin
+let clear: ClearZone[] = []
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
 
@@ -43,6 +51,7 @@ ctx.onmessage = async (e: MessageEvent<WorkerRequest>) => {
   if (msg.type === 'init') {
     archive = new PMTiles(msg.url)
     origin = msg.origin
+    clear = msg.clear
     return
   }
   try {
@@ -72,7 +81,9 @@ ctx.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop()
         return pts
       })
-      for (const polygon of splitPolygons(rings)) buildings.push({ id, rings: polygon, height, base })
+      for (const polygon of splitPolygons(rings)) {
+        if (!underLandmark(polygon[0])) buildings.push({ id, rings: polygon, height, base })
+      }
       props.push([id, { h: height, b: base, src: Number(p.src), ...(p.name ? { name: String(p.name) } : {}) }])
     }
     const mesh = buildMesh(buildings, msg.clutter)
@@ -90,6 +101,30 @@ ctx.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
 function reply(msg: WorkerResponse, transfer: Transferable[] = []) {
   ctx.postMessage(msg, transfer)
+}
+
+/** Footprint centred near a landmark model, or one that covers the landmark's spot (e.g. its mapped platform) */
+function underLandmark(ring: [number, number][]) {
+  if (!clear.length) return false
+  let cx = 0
+  let cy = 0
+  for (const [x, y] of ring) {
+    cx += x
+    cy += y
+  }
+  cx /= ring.length
+  cy /= ring.length
+  return clear.some((c) => Math.hypot(cx - c.x, cy - c.y) < c.r || contains(ring, c.x, c.y))
+}
+
+function contains(ring: [number, number][], x: number, y: number) {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
 }
 
 function ringArea(r: [number, number][]) {

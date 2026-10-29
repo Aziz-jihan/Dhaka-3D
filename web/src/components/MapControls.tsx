@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp, type LayerKey } from '../store'
 import { LIGHT_MODE_LABELS, type LightMode } from '../map/lighting'
 import { resetView } from '../map/camera'
+import { TOURS } from '../tours/tours'
 
 const LAYER_LABELS: Record<LayerKey, string> = {
   buildings: '3D buildings',
@@ -26,9 +27,22 @@ export default function MapControls() {
   const toggleLayer = useApp((s) => s.toggleLayer)
   const quality = useApp((s) => s.buildingQuality)
   const setQuality = useApp((s) => s.setBuildingQuality)
+  const setTour = useApp((s) => s.setTour)
+  const select = useApp((s) => s.select)
+  const setPanelOpen = useApp((s) => s.setPanelOpen)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [toursOpen, setToursOpen] = useState(false)
   const [orbit, setOrbit] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const toursRef = useRef<HTMLDivElement>(null)
+
+  const startTour = (id: string) => {
+    setToursOpen(false)
+    setOrbit(false)
+    select(null)
+    if (!window.matchMedia('(min-width: 768px)').matches) setPanelOpen(false)
+    setTour({ id, step: 0, playing: true })
+  }
 
   // Slow cinematic orbit around the current centre
   useEffect(() => {
@@ -51,14 +65,16 @@ export default function MapControls() {
     }
   }, [map, orbit])
 
+  // Close an open menu when clicking elsewhere
   useEffect(() => {
-    if (!layersOpen) return
+    if (!layersOpen && !toursOpen) return
     const close = (e: MouseEvent) => {
       if (!menuRef.current?.contains(e.target as Node)) setLayersOpen(false)
+      if (!toursRef.current?.contains(e.target as Node)) setToursOpen(false)
     }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
-  }, [layersOpen])
+  }, [layersOpen, toursOpen])
 
   return (
     <div className="fixed left-2 right-12 top-2 z-10 flex flex-wrap items-center justify-end gap-2 md:left-auto md:right-14 md:top-4">
@@ -90,6 +106,29 @@ export default function MapControls() {
         >
           {lang === 'en' ? <span lang="bn" className="font-bengali">বাংলা</span> : 'English'}
         </button>
+        <div ref={toursRef} className="relative">
+          <button type="button" className={btn} aria-expanded={toursOpen} onClick={() => setToursOpen((o) => !o)}>
+            Tours
+          </button>
+          {toursOpen && (
+            <ul className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl bg-[#fff8ee] p-1.5 shadow-xl ring-1 ring-amber-900/10">
+              {TOURS.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => startTour(t.id)}
+                    className="w-full rounded-lg px-3 py-2 text-left hover:bg-amber-50"
+                  >
+                    <span className="block text-sm font-medium text-stone-800">{t.title}</span>
+                    <span className="block text-xs leading-snug text-stone-500">
+                      {t.blurb} {t.stops.length} stops.
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <div ref={menuRef} className="relative">
           <button
             type="button"

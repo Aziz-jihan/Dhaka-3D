@@ -3,6 +3,7 @@ import MapView from './map/MapView'
 import Sidebar from './components/Sidebar'
 import InfoPanel from './components/InfoPanel'
 import MapControls from './components/MapControls'
+import TourPlayer from './components/TourPlayer'
 import { loadCityData } from './lib/data'
 import { useApp } from './store'
 
@@ -24,6 +25,7 @@ export default function App() {
       <Sidebar />
       <MapControls />
       <InfoPanel />
+      <TourPlayer />
       <div
         className={`loading pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center transition-opacity duration-700 ${
           ready ? 'opacity-0' : 'opacity-100'

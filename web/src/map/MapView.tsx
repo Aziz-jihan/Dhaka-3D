@@ -5,8 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { useApp } from '../store'
 import { areaAt } from '../lib/geo'
-import { BuildingLayer } from '../buildings/BuildingLayer'
-import type { BuildingProps } from '../buildings/tileWorker'
+import { BuildingLayer, type LayerHit } from '../buildings/BuildingLayer'
 import { DEFAULT_VIEW, DHAKA_BOUNDS, focusSelection } from './camera'
 import { PALETTES } from './lighting'
 import { CityMarkers } from './markers'
@@ -20,12 +19,6 @@ maplibregl.addProtocol('pmtiles', new Protocol().tile)
 const INITIAL_HASH = location.hash
 const BUILDING_SOURCE = { source: 'buildings', sourceLayer: 'buildings' }
 const LOW_POWER = window.matchMedia('(pointer: coarse)').matches
-
-interface BuildingPick {
-  id: number
-  props: BuildingProps
-  lngLat: [number, number]
-}
 
 export default function MapView() {
   const container = useRef<HTMLDivElement>(null)
@@ -84,14 +77,15 @@ export default function MapView() {
     markers.current = new CityMarkers(map, data, select)
     markers.current.setLang(useApp.getState().lang)
 
-    // Realistic buildings are ray-cast in three.js; simple ones are MapLibre features
-    const pickBuilding = (point: maplibregl.Point): BuildingPick | null => {
+    // Realistic buildings and landmark models are ray-cast in three.js; simple ones are MapLibre features
+    const pickBuilding = (point: maplibregl.Point): LayerHit | null => {
       if (buildings3d.current) return buildings3d.current.pick(point)
       const f = map.queryRenderedFeatures(point, { layers: ['buildings'] })[0]
       if (!f || f.id == null) return null
       const { lng, lat } = map.unproject(point)
       const p = f.properties
       return {
+        kind: 'building',
         id: Number(f.id),
         props: { h: Number(p.h), b: Number(p.b), src: Number(p.src), name: p.name as string | undefined },
         lngLat: [lng, lat],
@@ -102,6 +96,10 @@ export default function MapView() {
       const hit = pickBuilding(e.point)
       if (!hit) {
         select(null)
+        return
+      }
+      if (hit.kind === 'landmark') {
+        select({ type: 'landmark', slug: hit.slug })
         return
       }
       select({
@@ -117,20 +115,21 @@ export default function MapView() {
     }
 
     let hovered: number | null = null
-    const setHover = (id: number | null) => {
+    const setHover = (hit: LayerHit | null) => {
+      map.getCanvas().style.cursor = hit ? 'pointer' : ''
+      const id = hit?.kind === 'building' ? hit.id : null
       if (hovered === id) return
       if (hovered != null) map.setFeatureState({ ...BUILDING_SOURCE, id: hovered }, { hover: false })
       if (id != null) map.setFeatureState({ ...BUILDING_SOURCE, id }, { hover: true })
       buildings3d.current?.setHover(id)
       hovered = id
-      map.getCanvas().style.cursor = id != null ? 'pointer' : ''
     }
     // Ray-casting on every mousemove event is wasteful; once per frame is plenty
     let pending: maplibregl.Point | null = null
     const onMove = (e: maplibregl.MapMouseEvent) => {
       if (!pending)
         requestAnimationFrame(() => {
-          if (pending) setHover(pickBuilding(pending)?.id ?? null)
+          if (pending) setHover(pickBuilding(pending))
           pending = null
         })
       pending = e.point
@@ -168,12 +167,17 @@ export default function MapView() {
 
   // Realistic (three.js) or simple (MapLibre extrusion) buildings
   useEffect(() => {
-    if (!map || !loaded) return
+    if (!map || !loaded || !data) return
     if (quality === 'realistic' && !buildings3d.current) {
-      const layer = new BuildingLayer({ url: BUILDINGS_PMTILES, lowPower: LOW_POWER })
+      const layer = new BuildingLayer({
+        url: BUILDINGS_PMTILES,
+        lowPower: LOW_POWER,
+        city: { landmarks: data.landmarks, metro: data.metro },
+      })
       const { lightMode, selection, layers } = useApp.getState()
       layer.setLighting(PALETTES[lightMode])
       layer.setSelected(selection?.type === 'building' ? selection.id : null)
+      layer.setMetroVisible(layers.metro)
       map.addLayer(layer)
       if (!layers.buildings) map.setLayoutProperty(layer.id, 'visibility', 'none')
       buildings3d.current = layer
@@ -183,7 +187,7 @@ export default function MapView() {
     }
     const showSimple = quality === 'simple' && useApp.getState().layers.buildings
     map.setLayoutProperty('buildings', 'visibility', showSimple ? 'visible' : 'none')
-  }, [map, loaded, quality])
+  }, [map, loaded, data, quality])
 
   useEffect(() => markers.current?.setLang(lang), [lang, data])
 
@@ -198,6 +202,7 @@ export default function MapView() {
     const vis = (on: boolean) => (on ? 'visible' : 'none')
     map.setLayoutProperty('buildings', 'visibility', vis(layers.buildings && !realistic))
     if (map.getLayer('buildings-3d')) map.setLayoutProperty('buildings-3d', 'visibility', vis(layers.buildings && realistic))
+    buildings3d.current?.setMetroVisible(layers.metro)
     markers.current?.setVisible('areas', layers.areas)
     markers.current?.setVisible('landmarks', layers.landmarks)
   }, [map, loaded, layers, data])

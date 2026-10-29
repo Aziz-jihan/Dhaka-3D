@@ -1,4 +1,4 @@
-import type { Feature, FeatureCollection, Point, Polygon, MultiPolygon } from 'geojson'
+import type { Feature, FeatureCollection, LineString, MultiPolygon, Point, Polygon } from 'geojson'
 
 export interface AreaProps {
   slug: string
@@ -36,6 +36,14 @@ export interface CityData {
   areas: FeatureCollection<Polygon | MultiPolygon, AreaProps>
   landmarks: FeatureCollection<Point, LandmarkProps>
   places: Place[]
+  /** MRT Line 6: per-direction track lines and station points */
+  metro: FeatureCollection<LineString | Point, MetroProps>
+}
+
+export interface MetroProps {
+  kind: 'track' | 'station'
+  name: string
+  name_bn?: string
 }
 
 export type Selection =

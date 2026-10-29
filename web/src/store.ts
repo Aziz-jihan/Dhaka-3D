@@ -7,6 +7,12 @@ export type Lang = 'en' | 'bn'
 export type LayerKey = 'buildings' | 'areas' | 'roads' | 'metro' | 'landmarks'
 export type BuildingQuality = 'realistic' | 'simple'
 
+export interface TourState {
+  id: string
+  step: number
+  playing: boolean
+}
+
 interface AppState {
   map: MlMap | null
   data: CityData | null
@@ -16,6 +22,7 @@ interface AppState {
   selection: Selection | null
   layers: Record<LayerKey, boolean>
   buildingQuality: BuildingQuality
+  tour: TourState | null
   panelOpen: boolean
   setMap: (map: MlMap | null) => void
   setData: (data: CityData) => void
@@ -25,6 +32,8 @@ interface AppState {
   select: (selection: Selection | null) => void
   toggleLayer: (key: LayerKey) => void
   setBuildingQuality: (quality: BuildingQuality) => void
+  /** start a tour from its first stop, or change step/playing of the running one; null ends it */
+  setTour: (tour: TourState | null) => void
   setPanelOpen: (open: boolean) => void
 }
 
@@ -37,6 +46,7 @@ export const useApp = create<AppState>((set) => ({
   selection: null,
   layers: { buildings: true, areas: true, roads: true, metro: true, landmarks: true },
   buildingQuality: 'realistic',
+  tour: null,
   panelOpen: true,
   setMap: (map) => set({ map }),
   setData: (data) => set({ data }),
@@ -46,5 +56,6 @@ export const useApp = create<AppState>((set) => ({
   select: (selection) => set({ selection }),
   toggleLayer: (key) => set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
   setBuildingQuality: (buildingQuality) => set({ buildingQuality }),
+  setTour: (tour) => set({ tour }),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
 }))
